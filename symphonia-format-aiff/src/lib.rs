@@ -264,6 +264,7 @@ fn append_common_params(codec_params: &mut CodecParameters, common: &CommonChunk
     codec_params
         .with_max_frames_per_packet(AIFF_MAX_FRAMES_PER_PACKET)
         .with_sample_rate(common.sample_rate as u32)
+        .with_bits_per_sample(common.sample_size as u32)
         .with_time_base(TimeBase::new(1, common.sample_rate as u32));
 
     match common.format_data {
