@@ -24,6 +24,7 @@ ogg = ["symphonia-format-ogg"]
 pcm = ["symphonia-codec-pcm"]
 vorbis = ["symphonia-codec-vorbis"]
 wav = ["symphonia-format-wav"]
+aiff = ["symphonia-format-aiff"]
 
 [dependencies]
 lazy_static = "1.4.0"
@@ -39,6 +40,7 @@ symphonia-format-wav = { version = "0.5", path = "../symphonia-format-wav", opti
 symphonia-format-ogg = { version = "0.5", path = "../symphonia-format-ogg", optional = true }
 symphonia-format-isomp4 = { version = "0.5", path = "../symphonia-format-isomp4", optional = true }
 symphonia-format-mkv = { version = "0.5", path = "../symphonia-format-mkv", optional = true }
+symphonia-format-aiff = { version = "0.0", path = "../symphonia-format-aiff", optional = true }
 
 # Show documentation with all features enabled on docs.rs
 [package.metadata.docs.rs]
