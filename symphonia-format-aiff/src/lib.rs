@@ -109,6 +109,11 @@ impl FormatReader for AiffReader {
             // }
 
             match chunk.unwrap() {
+                AiffChunks::Comment(parser) => {
+                    let comment = parser.parse(&mut source)?;
+
+                    
+                },
                 AiffChunks::Common(parser) => {
                     let common = parser.parse(&mut source)?;
 
@@ -256,7 +261,7 @@ impl FormatReader for AiffReader {
     }
 
     fn into_inner(self: Box<Self>) -> MediaSourceStream {
-        todo!()
+        self.reader
     }
 }
 

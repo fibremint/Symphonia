@@ -133,6 +133,11 @@ pub trait ParseChunk: Sized {
     fn parse<B: ReadBytes + Seek>(reader: &mut B, tag: [u8; 4], len: u32) -> Result<Self>;
 }
 
+pub trait Parse: Sized {
+    fn parse<B: ReadBytes + Seek>(reader: &mut B) -> Result<Self>;
+}
+
+
 /// `ChunkParser` is a utility struct for unifying the parsing of chunks.
 pub struct ChunkParser<P: ParseChunk> {
     tag: [u8; 4],
@@ -155,19 +160,22 @@ impl<P: ParseChunk> ChunkParser<P> {
 // }
 
 pub enum AiffChunks {
-    Name(ChunkParser<TextChunk>),
     Common(ChunkParser<CommonChunk>),
-    Sound(ChunkParser<SoundDataChunk>),
+    Comment(ChunkParser<CommentsChunk>),
     ID3(ChunkParser<ID3v2Chunk>),
+    Name(ChunkParser<TextChunk>),
+    Sound(ChunkParser<SoundDataChunk>),
+
 }
 
 impl ParseChunkTag for AiffChunks {
     fn parse_tag(tag: [u8; 4], len: u32) -> Option<Self> {
         match &tag {
-            ids::NAME => parser!(AiffChunks::Name, TextChunk, tag, len),
             ids::COMMON => parser!(AiffChunks::Common, CommonChunk, tag, len),
-            ids::SOUND => parser!(AiffChunks::Sound, SoundDataChunk, tag, len),
+            ids::COMMENTS => parser!(AiffChunks::Comment, CommentsChunk, tag, len),
             ids::ID3 => parser!(AiffChunks::ID3, ID3v2Chunk, tag, len),
+            ids::NAME => parser!(AiffChunks::Name, TextChunk, tag, len),
+            ids::SOUND => parser!(AiffChunks::Sound, SoundDataChunk, tag, len),
             _ => None,
         }
     }
@@ -400,6 +408,66 @@ impl ParseChunk for ID3v2Chunk {
 
         Ok(Self { chunk_size: len as i32})
     }
+}
+
+pub struct Comment {
+    pub timestamp: u32,
+    pub marker_id: MarkerId,
+    pub count: u16,
+    pub text: String,
+}
+
+impl Parse for Comment {
+    fn parse<B: ReadBytes + Seek>(reader: &mut B) -> Result<Self> {
+        let timestamp = reader.read_be_u32()?;
+        let marker_id = util::read_i16_be(reader);
+        let count = reader.read_be_u16()?;
+
+        let mut str_buf = vec![0; count as usize];
+        reader.read_buf_exact(&mut str_buf).unwrap();
+        let text = String::from_utf8(str_buf).unwrap();
+
+        Ok(Self {
+            timestamp,
+            marker_id,
+            count,
+            text,
+        })
+    }
+}
+
+pub struct CommentsChunk {
+    pub size: i32,
+    pub num_comments: u16,
+    pub comments: Vec<Comment>
+}
+
+impl ParseChunk for CommentsChunk {
+    fn parse<B: ReadBytes + Seek>(reader: &mut B, tag: [u8; 4], len: u32) -> Result<Self> {
+        if &tag != ids::COMMENTS {
+            return decode_error("aiff: malformed id3v2 chunk");
+        }
+
+        let num_comments = reader.read_be_u16()?;
+
+        let mut comments = Vec::with_capacity(num_comments.try_into().unwrap());
+        for _ in 0..num_comments {
+            comments.push(Comment::parse(reader)?);
+        }
+
+        Ok(Self {
+            size: len.try_into().unwrap(),
+            num_comments,
+            comments,
+        })
+    }
+}
+
+type MarkerId = i16;
+pub struct Marker {
+    pub id: MarkerId,
+    pub position: u32,
+    pub marker_name: String,
 }
 
 // pub struct DataChunk {
